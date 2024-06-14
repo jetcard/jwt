@@ -1,0 +1,203 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description:
+  Sistema de Inventario 
+  SAM Template for API Gateway
+
+#Parameters:
+#  PostgresUsername:
+#    Type: String
+#    Description: Master user name for the RDS PostgreSQL instance
+#    Default: postgres
+#  PostgresPassword:
+#    Type: String
+#    Description: Master password for the RDS PostgreSQL instance
+#    Default: 1234567890
+#  PostgresDatabaseName:
+#    Type: String
+#    Description: RDS PostgreSQL database name
+#    Default: basededatos
+
+Globals:
+  Function:
+    CodeUri: .
+    Runtime: java21
+    Timeout: 30
+    MemorySize: 1024
+#    Environment:
+#      Variables:
+#        DBName: !Ref PostgresDatabaseName
+#        DBEnpoint: !GetAtt RDSInstance.Endpoint.Address
+#        user: !Ref PostgresUsername
+#        pass: !Ref PostgresPassword
+#        Resource: !Ref RDSSecret
+    AutoPublishAlias: dev
+    Tracing: Active
+
+Resources:
+
+  MyApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      Name: Inventarios API
+      Description: My AWS API Gateway config
+      EndpointConfiguration:
+        Types:
+          - REGIONAL
+
+  ResourceKeycloak:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: keycloak
+      RestApiId: !Ref MyApi
+
+  KeycloakOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            StatusCode: '200'
+        Type: MOCK
+        RequestTemplates:
+          "application/json": "{
+            \"statusCode\": 200
+            }"
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          StatusCode: '200'
+      OperationName: keycloak
+      ResourceId: !Ref ResourceKeycloak
+      RestApiId: !Ref MyApi
+
+  KeycloakPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            StatusCode: '200'
+        Type: AWS_PROXY
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
+          - lambdaArn: !GetAtt CrearKeycloakFunction.Arn
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          StatusCode: '200'
+      OperationName: keycloak
+      ResourceId: !Ref ResourceKeycloak
+      RestApiId: !Ref MyApi
+
+  CrearKeycloakFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: CrearKeycloak
+      Handler: com.inventarios.handler.AuthorizerKeycloakHandler
+      Runtime: java21
+#        Environment:
+#        Variables:
+#        DBName: !Ref PostgresDatabaseName
+#        DBEnpoint: !GetAtt RDSInstance.Endpoint.Address
+#        user: !Ref PostgresUsername
+#      pass: !Ref PostgresPassword
+#      RDSSecretArn: !Ref RDSSecret
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
+        - AWSLambdaVPCAccessExecutionRole
+        - AWSLambdaExecute
+#        Resource: !Ref RDSSecret
+      Events:
+        CrearRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /keycloak
+            Method: post
+
+  CrearKeycloakFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${CrearKeycloakFunction}"
+      RetentionInDays: 1
+
+  KeycloakPostApiGatewayInvoke:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - MyApi
+      - CrearKeycloakFunction
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt CrearKeycloakFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/POST/keycloak
+
+
+#  RDSInstance:
+#    Type: AWS::RDS::DBInstance
+#    Properties:
+#      Engine: postgres
+#      DBName: !Ref PostgresDatabaseName
+#      MasterUsername: !Ref PostgresUsername
+#      MasterUserPassword: !Ref PostgresPassword
+#      DBInstanceClass: db.t3.micro
+#      AllocatedStorage: "20"
+#      PubliclyAccessible: true
+#    DeletionPolicy: Delete
+
+#  RDSSecret:
+#    Type: 'AWS::SecretsManager::Secret'
+#    Properties:
+#      SecretString: !Sub '{"username":"${PostgresUsername}","password":"${PostgresPassword}", "RDSInstance":"${RDSInstance}", "RDSInstanceEndpoint":"${RDSInstance.Endpoint.Address}"}'
+
+#  SecretsPolicy:
+#    Type: 'AWS::IAM::ManagedPolicy'
+#    Properties:
+#      Description: Allow Lambdas to access the RDS Managed Secret
+#      PolicyDocument:
+#        Version: "2012-10-17"
+#        Statement:
+#          - Effect: Allow
+#            Action:
+#              - 'secretsmanager:GetSecretValue'
+#              - 'secretsmanager:DescribeSecret'
+#            Resource: !Ref RDSSecret
+
+  apiGatewayDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
+      - KeycloakPostMethod
+
+    Properties:
+      RestApiId: !Ref MyApi
+      StageName: prod
+
+Outputs:
+#  SecretArn:
+#    Description: The Managed Secret ARN
+#    Value: !Ref RDSSecret
+#  RDSInstanceEndpoint:
+#    Description: "Endpoint de la instancia de RDS PostgreSQL"
+#    Value: !GetAtt RDSInstance.Endpoint.Address
+  ApiEndpoint:
+    Description: "API Gateway endpoint URL for Prod stage"
+    Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/prod"
