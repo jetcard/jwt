@@ -46,7 +46,9 @@ public abstract class AuthorizerKeycloakAbstractHandler implements RequestHandle
         APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent().withHeaders(headers);
         try {
             String authToken = extractAuthToken(request);
+            logger.log("authToken = "+authToken);
             AuthorizationInfo authInfo = validateAuthToken(authToken);
+            logger.log("authInfo = "+authInfo);
             addAuthorizationHeaders(authInfo, request);
 
             /*if (authInfo.isAdmin()) {
