@@ -95,7 +95,7 @@ Resources:
         Type: AWS_PROXY
         Uri: !Sub
           - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
-          - lambdaArn: !GetAtt CrearKeycloakFunction.Arn
+          - lambdaArn: !GetAtt AuthorizerKeycloakFunction.Arn
       MethodResponses:
         - ResponseParameters:
             method.response.header.Access-Control-Allow-Headers: true
@@ -106,98 +106,152 @@ Resources:
       ResourceId: !Ref ResourceKeycloak
       RestApiId: !Ref MyApi
 
-  CrearKeycloakFunction:
+  AuthorizerKeycloakFunction:
     Type: AWS::Serverless::Function
     Properties:
-      FunctionName: CrearKeycloak
-      Handler: com.inventarios.handler.AuthorizerKeycloakHandler
+      FunctionName: AuthorizerKeycloak
+      Handler: com.inventarios.handler.keycloak.AuthorizerKeycloakHandler
       Runtime: java21
-#        Environment:
-#        Variables:
-#        DBName: !Ref PostgresDatabaseName
-#        DBEnpoint: !GetAtt RDSInstance.Endpoint.Address
-#        user: !Ref PostgresUsername
-#      pass: !Ref PostgresPassword
-#      RDSSecretArn: !Ref RDSSecret
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSLambda_ReadOnlyAccess
         - AWSXrayWriteOnlyAccess
         - AWSLambdaVPCAccessExecutionRole
         - AWSLambdaExecute
-#        Resource: !Ref RDSSecret
       Events:
-        CrearRequest:
+        AuthorizerRequest:
           Type: Api
           Properties:
             RestApiId: !Ref MyApi
             Path: /keycloak
             Method: post
 
-  CrearKeycloakFunctionLogGroup:
+  AuthorizerKeycloakFunctionLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
-      LogGroupName: !Sub "/aws/lambda/${CrearKeycloakFunction}"
+      LogGroupName: !Sub "/aws/lambda/${AuthorizerKeycloakFunction}"
       RetentionInDays: 1
 
   KeycloakPostApiGatewayInvoke:
     Type: AWS::Lambda::Permission
     DependsOn:
       - MyApi
-      - CrearKeycloakFunction
+      - AuthorizerKeycloakFunction
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !GetAtt CrearKeycloakFunction.Arn
+      FunctionName: !GetAtt AuthorizerKeycloakFunction.Arn
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/POST/keycloak
 
+  ResourceExamen:
+    Type: AWS::ApiGateway::Resource
+    Properties:
+      ParentId: !GetAtt MyApi.RootResourceId
+      PathPart: examen
+      RestApiId: !Ref MyApi
 
-#  RDSInstance:
-#    Type: AWS::RDS::DBInstance
-#    Properties:
-#      Engine: postgres
-#      DBName: !Ref PostgresDatabaseName
-#      MasterUsername: !Ref PostgresUsername
-#      MasterUserPassword: !Ref PostgresPassword
-#      DBInstanceClass: db.t3.micro
-#      AllocatedStorage: "20"
-#      PubliclyAccessible: true
-#    DeletionPolicy: Delete
+  ExamenOptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: OPTIONS
+      Integration:
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'GET,POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            StatusCode: '200'
+        Type: MOCK
+        RequestTemplates:
+          "application/json": "{
+            \"statusCode\": 200
+            }"
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          StatusCode: '200'
+      OperationName: examen
+      ResourceId: !Ref ResourceExamen
+      RestApiId: !Ref MyApi
 
-#  RDSSecret:
-#    Type: 'AWS::SecretsManager::Secret'
-#    Properties:
-#      SecretString: !Sub '{"username":"${PostgresUsername}","password":"${PostgresPassword}", "RDSInstance":"${RDSInstance}", "RDSInstanceEndpoint":"${RDSInstance.Endpoint.Address}"}'
+  ExamenPostMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        IntegrationHttpMethod: POST
+        IntegrationResponses:
+          - ResponseParameters:
+              method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+              method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
+              method.response.header.Access-Control-Allow-Origin: "'*'"
+            StatusCode: '200'
+        Type: AWS_PROXY
+        Uri: !Sub
+          - "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdaArn}/invocations"
+          - lambdaArn: !GetAtt ExamenSolucionFunction.Arn
+      MethodResponses:
+        - ResponseParameters:
+            method.response.header.Access-Control-Allow-Headers: true
+            method.response.header.Access-Control-Allow-Methods: true
+            method.response.header.Access-Control-Allow-Origin: true
+          StatusCode: '200'
+      OperationName: examen
+      ResourceId: !Ref ResourceExamen
+      RestApiId: !Ref MyApi
 
-#  SecretsPolicy:
-#    Type: 'AWS::IAM::ManagedPolicy'
-#    Properties:
-#      Description: Allow Lambdas to access the RDS Managed Secret
-#      PolicyDocument:
-#        Version: "2012-10-17"
-#        Statement:
-#          - Effect: Allow
-#            Action:
-#              - 'secretsmanager:GetSecretValue'
-#              - 'secretsmanager:DescribeSecret'
-#            Resource: !Ref RDSSecret
+  ExamenSolucionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: ExamenSolucion
+      Handler: com.inventarios.handler.examen.ExamenSolucionHandler
+      Runtime: java21
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambda_ReadOnlyAccess
+        - AWSXrayWriteOnlyAccess
+        - AWSLambdaVPCAccessExecutionRole
+        - AWSLambdaExecute
+      Events:
+        ExamenSolucionRequest:
+          Type: Api
+          Properties:
+            RestApiId: !Ref MyApi
+            Path: /solucion
+            Method: post
+
+  ExamenSolucionFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${ExamenSolucionFunction}"
+      RetentionInDays: 1
+
+  ExamenPostApiGatewayInvoke:
+    Type: AWS::Lambda::Permission
+    DependsOn:
+      - MyApi
+      - ExamenSolucionFunction
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt ExamenSolucionFunction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${MyApi}/*/POST/examen
 
   apiGatewayDeployment:
     Type: "AWS::ApiGateway::Deployment"
     DependsOn:
       - KeycloakPostMethod
+      - ExamenPostMethod
 
     Properties:
       RestApiId: !Ref MyApi
       StageName: prod
 
 Outputs:
-#  SecretArn:
-#    Description: The Managed Secret ARN
-#    Value: !Ref RDSSecret
-#  RDSInstanceEndpoint:
-#    Description: "Endpoint de la instancia de RDS PostgreSQL"
-#    Value: !GetAtt RDSInstance.Endpoint.Address
   ApiEndpoint:
     Description: "API Gateway endpoint URL for Prod stage"
     Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/prod"

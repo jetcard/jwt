@@ -26,7 +26,7 @@ import java.util.Map;
 
 @Authenticated
 @Path("/admin")
-@Produces(MediaType.APPLICATION_JSON)*/
+@Produces(MediaType.AhPPLICATION_JSON)*/
 public class AdminResourceLambdaFunction implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent apiGatewayProxyRequestEvent, Context context) {
