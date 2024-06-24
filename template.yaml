@@ -221,7 +221,7 @@ Resources:
           Type: Api
           Properties:
             RestApiId: !Ref MyApi
-            Path: /solucion
+            Path: /examen
             Method: post
 
   ExamenSolucionFunctionLogGroup:

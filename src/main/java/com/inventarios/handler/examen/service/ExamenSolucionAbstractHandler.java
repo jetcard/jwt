@@ -14,33 +14,44 @@ import com.inventarios.handler.examen.response.ExamenSolucionResponseRest;
 import io.quarkus.oidc.UserInfo;
 import io.quarkus.security.identity.SecurityIdentity;
 import jakarta.inject.Inject;
-import jakarta.servlet.http.HttpSession;
+import jakarta.ws.rs.core.SecurityContext;
+
 import java.util.HashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
 public abstract class ExamenSolucionAbstractHandler  implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
     private static final Map<String, String> headers = new HashMap<>();
-    private HttpSession sesion;
 
     static {
         headers.put("Content-Type", "application/json");
         headers.put("X-Custom-Header", "application/json");
         headers.put("Access-Control-Allow-Origin", "*");
-        headers.put("Access-Control-Allow-Headers", "content-type,X-Custom-Header,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token");
+        headers.put("Access-Control-Allow-Headers", "X-UserId, X-Roles, " +
+                "content-type, X-Custom-Header, X-Amz-Date, Authorization, X-Api-Key, X-Amz-Security-Token");
         headers.put("Access-Control-Allow-Methods", "POST");
     }
 
     protected abstract void actualizaRespuestas(APIGatewayProxyRequestEvent request);
 
-    @Inject
+    //@Inject
     SecurityIdentity securityIdentity;
-    @Inject
+    //@Inject
     UserInfo userInfo;
+
+    //@Context
+    SecurityContext securityContext;
 
     @Override
     public APIGatewayProxyResponseEvent handleRequest(final APIGatewayProxyRequestEvent request, final Context context) {
-            String path = request.getPath();
+        request.setHeaders(headers);
+        LambdaLogger logger = context.getLogger();
+        APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent().withHeaders(headers);
+        ExamenSolucionResponseRest responseRest = new ExamenSolucionResponseRest();
+        System.out.println("##########################");
+        System.out.println("request headers: "+request.getHeaders().toString());
+        System.out.println("##########################");
+        /*    String path = request.getPath();
             if (path.equals("/users/me")) {
                 return handleMeRequest(request, context);
             } else if (path.equals("/users/info")) {
@@ -49,12 +60,9 @@ public abstract class ExamenSolucionAbstractHandler  implements RequestHandler<A
                 return new APIGatewayProxyResponseEvent()
                         .withStatusCode(404)
                         .withBody("Resource not found");
-            }
+            }*/
 
-/*
-        LambdaLogger logger = context.getLogger();
-        APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent().withHeaders(headers);
-        ExamenSolucionResponseRest responseRest = new ExamenSolucionResponseRest();
+
         try{
             // Obtener los parámetros de consulta
             Map<String, String> queryParams = request.getQueryStringParameters();
@@ -75,12 +83,12 @@ public abstract class ExamenSolucionAbstractHandler  implements RequestHandler<A
             int PAGINA_IMPRIMIR = 4;
             int PAGINA_JUEGO = 5;
             int pantalla;
-
+/*
             ControlBeanNombr ctrlBean;
             EstudianteSession esb;
             Examen e;
-
-            String output="";
+*/
+            String output="Bien!";
             return response.withStatusCode(200)
                 .withBody(output);
         } catch (Exception e) {
@@ -88,12 +96,14 @@ public abstract class ExamenSolucionAbstractHandler  implements RequestHandler<A
                     .withBody(e.toString())
                     .withStatusCode(500);
         }
-*/
+
     }
 
     private APIGatewayProxyResponseEvent handleMeRequest(APIGatewayProxyRequestEvent request, Context context) {
         String username = securityIdentity.getPrincipal().getName();
         Map<String, String> responseBody = Map.of("username", username);
+        System.out.println("***********************");
+        System.out.println("username: "+username);
         return buildResponse(200, responseBody);
     }
     private APIGatewayProxyResponseEvent handleInfoRequest(APIGatewayProxyRequestEvent request, Context context) {
@@ -106,11 +116,16 @@ public abstract class ExamenSolucionAbstractHandler  implements RequestHandler<A
                 "sub", userInfo.getSubject(),
                 "email", userInfo.getEmail()
         );
+        System.out.println("***********************");
+        System.out.println("userInfoMap: "+userInfoMap.toString());
         return buildResponse(200, userInfoMap);
     }
     private APIGatewayProxyResponseEvent buildResponse(int statusCode, Object body) {
         try {
             String responseBody = new ObjectMapper().writeValueAsString(body);
+            System.out.println("***********************");
+            System.out.println("responseBody: "+responseBody.toString());
+
             return new APIGatewayProxyResponseEvent()
                     .withStatusCode(statusCode)
                     .withHeaders(Map.of("Content-Type", "application/json"))

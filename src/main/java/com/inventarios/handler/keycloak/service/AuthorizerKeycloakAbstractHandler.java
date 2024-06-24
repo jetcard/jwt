@@ -22,7 +22,8 @@ public abstract class AuthorizerKeycloakAbstractHandler implements RequestHandle
         headers.put("Content-Type", "application/json");
         headers.put("X-Custom-Header", "application/json");
         headers.put("Access-Control-Allow-Origin", "*");
-        headers.put("Access-Control-Allow-Headers", "content-type,X-Custom-Header,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token");
+        headers.put("Access-Control-Allow-Headers", "X-UserId, X-Roles, " +
+                "content-type, X-Custom-Header, X-Amz-Date, Authorization, X-Api-Key, X-Amz-Security-Token");
         headers.put("Access-Control-Allow-Methods", "POST");
     }
 
@@ -59,7 +60,7 @@ public abstract class AuthorizerKeycloakAbstractHandler implements RequestHandle
             Gson gson = GsonFactory.createGson();
             String output = gson.toJson(responseRest);
             logger.log(output);
-            return response.withStatusCode(200)
+            return response.withStatusCode(200).withHeaders(headers)
                     .withBody(output);
         } catch (Exception e) {
             responseRest.setMetadata("No autorizado", "-1", "Ingreso no autorizado");

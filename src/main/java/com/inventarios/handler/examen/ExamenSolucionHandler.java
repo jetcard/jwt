@@ -7,7 +7,45 @@ import java.util.Map;
 public class ExamenSolucionHandler extends ExamenSolucionAbstractHandler {
     @Override
     protected void actualizaRespuestas(APIGatewayProxyRequestEvent request) {
-
+        Map<String, String> queryParams = request.getQueryStringParameters();
+        String idExamen  = queryParams.containsKey("id_examen") ? (queryParams.get("id_examen")) : "";
+        System.out.println("idExamen  = "+idExamen);
+        String idExamenNombre = queryParams.containsKey("id_examen_nombre") ? (queryParams.get("id_examen_nombre")) : "";
+        System.out.println("idExamenNombre  = "+idExamenNombre);
+        if (idExamen == null) {
+            return;
+        }
+        if (idExamenNombre == null) {
+            return;
+        }
+        System.out.println("**************************************************************");
+        /*authorizationInfo
+        Object obj=request.geetSession().getAttribute("sesione");
+        System.out.println(obj.toString());
+        //sesion.setAttribute("sesione", (Object)esb);
+        //this.sesion.setAttribute("sesione", (Object)this.esb);
+        //this.e = new Examen(this.esb, idExamen, idExamenNombre);
+        esb=(EstudianteSession)obj;
+        esb.setNombreExamenRanking(idExamenNombre);//NombreLargo
+        esb.setExamenRanking(idExamen);//NombreCorto
+        this.e = new Examen(esb, idExamen, idExamenNombre);
+        this.e.setIdExamen(idExamen);
+        this.e.setIdExamenNombreLargo(idExamenNombre);
+        ExamenSesion exses = this.ctrlBean.getExamenSesion(this.e);
+        if (exses.estaEvaluado()) {
+            return;
+        }
+        int pid = Integer.parseInt(req.getParameter("id_pregunta"));
+        PreguntaSesion psb = this.ctrlBean.getPreguntaSesion(this.e, pid);
+        int numOpciones = psb.getNumOpciones();
+        boolean[] solucion = new boolean[numOpciones];
+        String[] opIds = req.getParameterValues("" + pid);
+        if (opIds != null) {
+            for (int j = 0; j < opIds.length; ++j) {
+                solucion[Integer.parseInt((String)opIds[j]) - 1] = true;
+            }
+        }
+        psb.setRespuestas(solucion);*/
     }
 /*
     private HttpSession sesion;
@@ -145,45 +183,6 @@ public class ExamenSolucionHandler extends ExamenSolucionAbstractHandler {
         }
         return pagina;
     }
+*/
 
-    @Override
-    protected void actualizaRespuestas(APIGatewayProxyRequestEvent request) {
-        Map<String, String> queryParams = request.getQueryStringParameters();
-        String idExamen  = queryParams.containsKey("id_examen") ? (queryParams.get("id_examen")) : "";
-        String idExamenNombre = queryParams.containsKey("id_examen_nombre") ? (queryParams.get("id_examen_nombre")) : "";
-        if (idExamen == null) {
-            return;
-        }
-        if (idExamenNombre == null) {
-            return;
-        }
-        System.out.println("**************************************************************");
-        authorizationInfo
-        Object obj=request.geetSession().getAttribute("sesione");
-        System.out.println(obj.toString());
-        //sesion.setAttribute("sesione", (Object)esb);
-        //this.sesion.setAttribute("sesione", (Object)this.esb);
-        //this.e = new Examen(this.esb, idExamen, idExamenNombre);
-        esb=(EstudianteSession)obj;
-        esb.setNombreExamenRanking(idExamenNombre);//NombreLargo
-        esb.setExamenRanking(idExamen);//NombreCorto
-        this.e = new Examen(esb, idExamen, idExamenNombre);
-        this.e.setIdExamen(idExamen);
-        this.e.setIdExamenNombreLargo(idExamenNombre);
-        ExamenSesion exses = this.ctrlBean.getExamenSesion(this.e);
-        if (exses.estaEvaluado()) {
-            return;
-        }
-        int pid = Integer.parseInt(req.getParameter("id_pregunta"));
-        PreguntaSesion psb = this.ctrlBean.getPreguntaSesion(this.e, pid);
-        int numOpciones = psb.getNumOpciones();
-        boolean[] solucion = new boolean[numOpciones];
-        String[] opIds = req.getParameterValues("" + pid);
-        if (opIds != null) {
-            for (int j = 0; j < opIds.length; ++j) {
-                solucion[Integer.parseInt((String)opIds[j]) - 1] = true;
-            }
-        }
-        psb.setRespuestas(solucion);
-    }*/
 }
